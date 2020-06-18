@@ -158,7 +158,7 @@ function Get-7ZipPath {
 	if (Get-Command "7z" -ErrorAction SilentlyContinue) { return "7z" }
 	elseif (test-path "$env:ProgramFiles\7-Zip\7z.exe") { return "$env:ProgramFiles\7-Zip\7z.exe" }
 	elseif (test-path "${env:ProgramFiles(x86)}\7-Zip\7z.exe") { return "${env:ProgramFiles(x86)}\7-Zip\7z.exe" }
-	else { return "" }
+	else { throw "7z.exe needed" }
 }
 
 function Expand-Downloads($FolderPath, $TargetPath) {
@@ -166,27 +166,26 @@ function Expand-Downloads($FolderPath, $TargetPath) {
 	$tempPath = join-path $FolderPath "temp"
 	New-Item -ItemType Directory -Force -Path $tempPath
 
-	try {
-		$7zPath = Get-7ZipPath
-		if (-not $7zPath) { throw "7z.exe needed" }
+	try {				
 		get-item *.zip | % {
+			$7zPath = Get-7ZipPath
 			$command = """$7zPath"" x ""$($_.FullName)"" -o""$tempPath"""
 			& cmd.exe /C $command
 		}
 
 		get-item *.7z | % {
+			$7zPath = Get-7ZipPath
 			$command = """$7zPath"" x ""$($_.FullName)"" -o""$tempPath"""
 			& cmd.exe /C $command
 		}
 
 		get-item *.box | % {
+			$7zPath = Get-7ZipPath
 			$command = """$7zPath"" x ""$($_.FullName)"" -so | ""$7zPath"" x -aoa -si -ttar -o""$tempPath"""
 			& cmd.exe /C $command
 		}
 
 		get-item *.vhdx | % { Move-Item $_.FullName $TargetPath -Force }
-
-		get-item *.vhd | % { Move-Item $_.FullName $TargetPath -Force }
 
 		$sourceFolder = if (Test-Path "$tempPath\Virtual Hard Disks") { "$tempPath\Virtual Hard Disks" } else { $tempPath }
 		Get-ChildItem -Path $sourceFolder -Force | Select-Object -First 1 | Move-Item -Destination $TargetPath
@@ -232,7 +231,6 @@ try {
 		Expand-Downloads -FolderPath $tempPathDirectory\@sourceVm -TargetPath $vhdPath
 	}
 	elseif ($source) {
-
 		if (Test-Uri -Url $source) {
 			Get-FileFromUri -Url $source -FolderPath $tempPathDirectory
 		}
